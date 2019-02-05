@@ -1,0 +1,181 @@
+### These directions are to set up the guacamole/VNC pipeline by hand. We should
+### probably write a shell script to automate this process.
+# update the package lists
+sudo apt-get update
+
+# We want to install the vncserver: We are using tigervnc
+# for it's support of direct x rendering, which is required for 
+# apps like the slicer.
+sudo apt-get install tigervnc-standalone-server
+
+# As the user start the vncserver. It will ask for a password. Enter one
+# and make a note of it because we will need to for the tomcat user-mapping.xml file later.
+# But you can use the vncpasswd command to change this as needed.
+cd
+vncserver
+
+# now stop the vncserver
+vncserver -kill :1
+
+# cd to the .vnc directory and edit the xstartup file to look like this:
+#!/bin/sh
+xrdb $HOME/.Xresources
+xsetroot -solid grey
+export XKL_XMODMAP_DISABLE=1
+/etc/X11/Xsession
+lxterminal &
+/usr/bin/lxsession -s LXDE &
+
+# We want some sort of desktop as well. We are using lxde at the moment.  I really don't 
+# like gnome, as it is too heavyweight for what we need
+sudo apt-get install lxde
+
+# we also need the mesa libs
+sudo apt-get install libglu1-mesa libxi-dev libxmu-dev libglu1-mesa-dev mesa-utils
+
+# We need to open the relevant ports: for AWS there is a Guacamole-Tomcat security group to add.
+
+# The instances seem to have the ufw firewall enabled.  We need to make sure we can 
+# pass port 8080 (or whatever tomcat port has been configured)
+sudo ufw allow 8080
+
+# Install tomcat8 (required for guacamole)
+sudo apt-get install tomcat8 tomcat8-admin
+
+# The default Tomcat port is 8080.  We need to make sure we can get to either 
+# that port or whatever port is configered in /etc/tomcat8/server.xml.
+# Here is the relevant stanze:
+   <Connector port="8080" protocol="HTTP/1.1"
+               connectionTimeout="20000"
+               redirectPort="8443" />
+
+# Ensure that Tomcat 8 is listening for IPV4 connections
+# Create a file called /usr/share/tomcat8/bin/setenv.sh
+sudo vi /usr/share/tomcat8/bin/setenv.sh
+
+# insert the following line
+CATALINA_OPTS=" $JAVA_OPTS -Djava.net.preferIPv4Stack=true -Djava.net.preferIPv4Addresses=true "
+
+# Enable the tomcat 8 management GUI
+# Add the following 2 lines to /etc/tomcat8/tomcat-users.xml
+# replace xxxxxx with a user name and yyyyyyy with a password
+  <role rolename="manager-gui"/>
+  <user username="xxxxxxx" password="yyyyyyyyyyy" roles="manager-gui"/>`
+
+# link the server.xml into the tomcat8 conf directory.  This doesn't seem like
+# it should be neccessary but it seems to be...
+sudo mkdir /usr/share/tomcat8/conf
+sudo ln -s /etc/tomcat8/server.xml /usr/share/tomcat8/conf/server.xml
+
+# Start tomcat8
+sudo service tomcat8 restart
+
+# You should now be able to get to the management app at
+# instanceIP:8080/manager/html Ex: http://3.84.107.131:8080/manager/html
+
+# Next we do the guacamole install
+# Create a directory and download the Gucamole Client and server
+mkdir guacDir
+cd guacDir
+wget http://apache.cs.utah.edu/guacamole/1.0.0/source/guacamole-server-1.0.0.tar.gz
+wget http://apache.cs.utah.edu/guacamole/1.0.0/binary/guacamole-1.0.0.war
+
+# We have to build the server, and we need some pre-reqs
+sudo apt-get install libjpeg-turbo8-dev
+sudo apt-get install libcairo2-dev libjpeg62-dev libpng-dev libossp-uuid-dev
+sudo apt-get install libvncserver-dev
+
+# Unpack the server source code
+tar -xzf guacamole-server-1.0.0.tar.gz
+cd guacamole-server-1.0.0/
+
+# Configure, build, and install
+./configure --with-init-dir=/etc/init.d
+make
+sudo make install
+sudo ldconfig
+
+# Install the war file
+cd ..
+sudo cp guacamole-1.0.0.war /var/lib/tomcat8/webapps
+
+# create the /etc/guacamole directory
+sudo mkdir /etc/guacamole
+
+# create the user-mapping.xml file to add the power user 
+# first you'll need to create a md5 version of the password for the power user.
+# This will be the password they use to log in to guacamole
+echo -n password | /usr/bin/md5sum
+
+# save the md5sum
+
+# create user-mapping.xml file
+sudo vi /usr/share/tomcat8/lib/user-mapping.xml
+
+# Add this:
+<user-mapping>
+
+    <!-- Example user configurations are given below. For more information,
+         see the user-mapping.xml section of the Guacamole configuration
+         documentation: http://guac-dev.org/Configuring%20Guacamole -->
+
+    <!-- Per-user authentication and config information -->
+
+   <authorize username="powerusername" password="md5 version of the password from above" encoding="md5">
+        <protocol>vnc</protocol>
+        <param name="hostname">localhost</param>
+        <param name="port">5901</param>
+        <param name="password">vncpassword saved above</param>
+    </authorize>
+
+</user-mapping>
+
+# link the /usr/share/tomcat8/lib/user-mapping.xml into /etc/guacamole
+sudo ln -s /usr/share/tomcat8/lib/user-mapping.xml /etc/guacamole/user-mapping.xml
+
+# Not sure why this should be needed either, but it does seem important
+sudo ln -s /etc/guacamole /var/lib/tomcat8/.guacamole
+
+# create the guacamole.properties file 
+sudo vi /usr/share/tomcat8/lib/guacamole.properties
+
+# Put exactly this in it
+
+#    Guacamole - Clientless Remote Desktop
+#    Copyright (C) 2010  Michael Jumper
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+# Hostname and port of guacamole proxy
+guacd-hostname: localhost
+guacd-port:     4822
+
+# Auth provider class (authenticates user/pass combination, needed if using the provided login screen)
+auth-provider: net.sourceforge.guacamole.net.basic.BasicFileAuthenticationProvider
+basic-user-mapping: /etc/guacamole/user-mapping.xml
+
+# link guacamole.properties into /etc/guacamole
+sudo ln -s /usr/share/tomcat8/lib/guacamole.properties /etc/guacamole/guacamole.properties
+
+# start the guacd
+sudo /etc/init.d/guacd start
+
+# start the VNC server
+vncserver -geometry 1920x1024 -depth 24
+
+# Browse to 
+ipaddress:8080
+
+look in /var/log/tomcat8 for log output.
