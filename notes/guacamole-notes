@@ -177,7 +177,7 @@ sudo /etc/init.d/guacd start
 vncserver -geometry 1920x1024 -depth 24
 
 # Browse to 
-ipaddress:8080
+ipaddress:8080/guacamole-1.0.0
 
 look in /var/log/tomcat8 for log output.
 
