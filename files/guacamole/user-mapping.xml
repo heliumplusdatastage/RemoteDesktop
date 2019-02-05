@@ -1,0 +1,16 @@
+<user-mapping>
+
+    <!-- Example user configurations are given below. For more information,
+         see the user-mapping.xml section of the Guacamole configuration
+         documentation: http://guac-dev.org/Configuring%20Guacamole -->
+
+    <!-- Per-user authentication and config information -->
+
+   <authorize username="powerusername" password="md5 version of the password from above" encoding="md5">
+        <protocol>vnc</protocol>
+        <param name="hostname">localhost</param>
+        <param name="port">5901</param>
+        <param name="password">vncpassword saved above</param>
+    </authorize>
+
+</user-mapping>
