@@ -166,6 +166,7 @@ guacd-port:     4822
 auth-provider: net.sourceforge.guacamole.net.basic.BasicFileAuthenticationProvider
 basic-user-mapping: /etc/guacamole/user-mapping.xml
 
+###############################################
 # link guacamole.properties into /etc/guacamole
 sudo ln -s /usr/share/tomcat8/lib/guacamole.properties /etc/guacamole/guacamole.properties
 
@@ -179,3 +180,24 @@ vncserver -geometry 1920x1024 -depth 24
 ipaddress:8080
 
 look in /var/log/tomcat8 for log output.
+
+Additional notes for installation:
+Examples of needed files are in https://github.com/heliumplusdatastage/RemoteDesktop/tree/master/files
+
+How to use the vncserver file:
+# Change the "POWERUSER" string in the files/vnc/vncserver file to the name of the power user.
+# Replace username with the actual power user account name
+sed 's/POWERUSER/username/' vncserver > vncserver.local
+
+# Copy the file to /etc/init.d/vncserver
+sudo cp vncserver.local /etc/init.d/vncserver
+
+# Make sure the file is executable 
+sudo chmod +x /etc/init.d/vncserver
+
+# Make sure the file gets called at init time.
+sudo update-rc.d vncserver defaults
+
+# Make sure guacd gets restarted as well.  Tomcat alreadys seems to do this.
+sudo update-rc.d guacd defaults
+
