@@ -5,6 +5,10 @@
 # Default-Start:     S
 # Default-Stop:      0 6
 ### END INIT INFO
+######################################################
+# Important: This does not work with systemd
+# use vncserver@:1.service instead
+######################################################
 
 PATH="$PATH:/usr/X11R6/bin/"
 
