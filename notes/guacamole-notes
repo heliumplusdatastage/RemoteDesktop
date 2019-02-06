@@ -184,7 +184,10 @@ look in /var/log/tomcat8 for log output.
 Additional notes for installation:
 Examples of needed files are in https://github.com/heliumplusdatastage/RemoteDesktop/tree/master/files
 
-How to use the vncserver file:
+############################################################################################
+################ Important see below for instructions with systemd dependent OS 
+################ such as Ubuntu 18.04
+How to use the vncserver file: 
 # Change the "POWERUSER" string in the files/vnc/vncserver file to the name of the power user.
 # Replace username with the actual power user account name
 sed 's/POWERUSER/username/' vncserver > vncserver.local
@@ -197,7 +200,28 @@ sudo chmod +x /etc/init.d/vncserver
 
 # Make sure the file gets called at init time.
 sudo update-rc.d vncserver defaults
+`
+############################################################################################
+################ Instructions for systemd dependent OS such as Ubuntu 18.04
+############################################################################################
+# Change the "POWERUSER" string in files/vnc/vncserver@:1.service file to the name of the power user.
+# Replace username with the actual power user account name
+sed 's/POWERUSER/username/' vncserver@:1.service > vncserver.local
 
-# Make sure guacd gets restarted as well.  Tomcat alreadys seems to do this.
+# Copy the file to /etc/systemd/system/vncserver@:1.service
+sudo cp vncserver.local /etc/systemd/system/vncserver@:1.service
+
+# Make sure the systemd system is aware of this file
+sudo systemctl daemon-reload
+
+# Enable the vncserver unit
+sudo systemctl enable vncserver@:1.service
+
+# Stop lxpolkit from giving an error message on startup.  I tried a lot of other methods
+# for shutting this thing up, but this was the only one that worked.
+sudo mv /usr/bin/lxpolkit /usr/bin/lxpolkit.bak
+
+# Make sure guacd gets restarted as well.  Tomcat alreadys seems to do this. So this may not
+# be needed. In fact I'm surprised it didn't anything at all
 sudo update-rc.d guacd defaults
 
