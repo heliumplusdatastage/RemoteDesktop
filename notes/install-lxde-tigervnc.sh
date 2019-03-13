@@ -16,14 +16,14 @@ apt-get update
 # We want to install the vncserver: We are using tigervnc
 # for it's support of direct x rendering, which is required for 
 # apps like the slicer.
-apt-get install tigervnc-standalone-server
+apt-get install tigervnc-standalone-server -y
 
 # We want some sort of desktop as well. We are using lxde at the moment.  I really don't 
 # like gnome, as it is too heavyweight for what we need
-apt-get install lxde lxshortcut
+apt-get install lxde lxshortcut -y
 
 # we also need the mesa libs
-apt-get install libglu1-mesa libxi-dev libxmu-dev libglu1-mesa-dev mesa-utils
+apt-get install libglu1-mesa libxi-dev libxmu-dev libglu1-mesa-dev mesa-utils -y
 
 # for shutting this thing up, but this was the only one that worked.
 mv /usr/bin/lxpolkit /usr/bin/lxpolkit.bak
@@ -36,3 +36,5 @@ vncpasswd -f $2
 
 # start the VNC server
 vncserver -geometry 1920x1024 -depth 24 -SecurityTypes VncAuth
+
+exit
