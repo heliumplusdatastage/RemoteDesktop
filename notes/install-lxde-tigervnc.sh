@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 ### This script sets up the tigervnc server and lxde.  It has to be run as root.
 ### The script takes 2 arguments: The user name and the user password.  Unfortunately, the 
 ### VNC version we are using does not seem to support multiple user names on the same instance.
@@ -28,13 +28,35 @@ apt-get install libglu1-mesa libxi-dev libxmu-dev libglu1-mesa-dev mesa-utils -y
 # for shutting this thing up, but this was the only one that worked.
 mv /usr/bin/lxpolkit /usr/bin/lxpolkit.bak
 
-# change to the supplied user
-su - $1
+# Get the user home directory
+userName=$1
+userDir=`eval echo "~$userName"`
 
-# set the vnc password.  This will also create a reasonable startup file
-vncpasswd -f $2
+# make the VNC directory
+su - $1 -c "mkdir ${userDir}/.vnc"
+
+# set the vnc password.  
+su - $1 -c "echo -n $2 | vncpasswd -f > ${userDir}/.vnc/passwd"
+
+# chmod the vnc password.  
+su - $1 -c "chmod 600 ${userDir}/.vnc/passwd"
+
+# create an xstartup file
+cat << EOF > /tmp/xstartup
+#!/bin/sh
+xrdb $userDir/.Xresources
+xsetroot -solid grey
+export XKL_XMODMAP_DISABLE=1
+/etc/X11/Xsession
+lxterminal &
+/usr/bin/lxsession -s LXDE &
+EOF
+
+# copy the startup file as the user
+su - $1 -c "cp /tmp/xstartup ${userDir}/.vnc/xstartup"
+
+# cleanup the starup file
+/bin/rm -f /tmp/xstartup
 
 # start the VNC server
-vncserver -geometry 1920x1024 -depth 24 -SecurityTypes VncAuth
-
-exit
+su - $1 -c "vncserver -geometry 1920x1024 -depth 24 -SecurityTypes VncAuth"
